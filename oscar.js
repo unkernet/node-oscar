@@ -130,7 +130,13 @@ OscarConnection.prototype.sendIM = function(who, message, flags, cb) {
     return;
   }
 
-  message = str2bytes(''+message);
+  if (message.length==Buffer(message).length) {
+    message = str2bytes(''+message);
+  } else { // Message contains non ascii symbols, send as UCS-2 big-endian
+    message=swapBytes(Buffer(message,'ucs2').toArray());
+    charset = ICBM_MSG_CHARSETS.UNICODE;
+  }
+  
   if (message.length > MAX_MSG_LEN) {
     // TODO: try stripping message of any HTML to see if it then fits within the length limit
     var err = new Error('IM messages cannot be longer than ' + MAX_MSG_LEN + ' characters');
@@ -1688,7 +1694,11 @@ OscarConnection.prototype._parseSNAC = function(conn, snac, cb) {
                 charset = (msgData[i++] << 8) + msgData[i++];
                 i += 2;
                 fragLen -= 4;
-                msgText = msgData.toString('utf8', i, i+fragLen);
+                if (charset==ICBM_MSG_CHARSETS.UNICODE) { // Message is in UCS-2 big endian
+                  msgText=swapBytes(msgData.slice(i, i+fragLen)).toString('ucs2');
+                } else {
+                  msgText = msgData.toString('ascii', i, i+fragLen);
+                }
                 i += fragLen;
                 break;
               }
@@ -3158,6 +3168,19 @@ function bufferAppend(buf1, buf2) {
 
   return newBuf;
 };
+
+function swapBytes(buffer) {
+  var l = buffer.length;
+  if (l & 0x01) {
+    return buffer;
+  }
+  for (var i = 0; i < l; i += 2) {
+    var a = buffer[i];
+    buffer[i] = buffer[i+1];
+    buffer[i+1] = a;
+  }
+  return buffer; 
+}
 
 Buffer.prototype.toArray = function() {
   return Array.prototype.slice.call(this);
