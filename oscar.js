@@ -130,7 +130,7 @@ OscarConnection.prototype.sendIM = function(who, message, flags, cb) {
     return;
   }
 
-  if (message.length==Buffer(message).length) {
+  if (message.length==Buffer.byteLength(message)) {
     message = str2bytes(''+message);
   } else { // Message contains non ascii symbols, send as UCS-2 big-endian
     message=swapBytes(Buffer(message,'ucs2').toArray());
