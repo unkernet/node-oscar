@@ -1,5 +1,7 @@
-var net = require('net'), util = require('util'),
-    EventEmitter = require('events').EventEmitter, crypto = require('crypto');
+var net = require('net'),
+    util = require('util'),
+    EventEmitter = require('events').EventEmitter,
+    crypto = require('crypto');
 var fnEmpty = function() {};
 var debug = fnEmpty, hexy, inspectMutated = false,
     hexyFormat = {
@@ -850,7 +852,7 @@ OscarConnection.prototype._resetState = function() {
 
 OscarConnection.prototype._addConnection = function(id, services, host, port, cb) {
   var self = this;
-  self._state.connections[id] = net.createConnection(port, host);
+  self._state.connections[id] = new net.Socket();
   self._state.connections[id].id = id;
   self._state.connections[id].neededServices = services;
   self._state.connections[id].serverType = (id === 'login' ? 'login' : 'BOS');
@@ -876,6 +878,7 @@ OscarConnection.prototype._addConnection = function(id, services, host, port, cb
   self._state.connections[id].on('end', function() { end_handler.call(this, self); });
   self._state.connections[id].on('error', function(err) { error_handler.call(this, self, err, cb); });
   self._state.connections[id].on('close', function(had_error) { close_handler.call(this, self, had_error); });
+  self._state.connections[id].connect(port, host);
 }
 
 OscarConnection.prototype._addService = function(svc, roomInfo, cb) {
@@ -3186,21 +3189,6 @@ function swapBytes(buffer) {
 
 Buffer.prototype.toArray = function() {
   return Array.prototype.slice.call(this);
-};
-
-var _oldBufferToString = Buffer.prototype.toString;
-Buffer.prototype.toString = function() {
-  if (arguments.length > 0 && arguments[0] === 'hex')
-    return toHexStr(this);
-  else
-    return _oldBufferToString.apply(this, Array.prototype.slice.call(arguments));
-};
-
-var _oldStreamConnect = net.Stream.prototype.connect;
-net.Stream.prototype.connect = function(port, host) {
-  this.remoteAddress = host;
-  this.remotePort = port;
-  _oldStreamConnect.apply(this, Array.prototype.slice.call(arguments));
 };
 
 function getConnSvcNames(conn) {
